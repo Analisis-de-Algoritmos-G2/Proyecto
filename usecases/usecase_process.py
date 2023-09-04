@@ -212,6 +212,7 @@ def get_pair(topics):
         for word in topic:
             tweet_n = "No hay par"
             tweet_p = "No hay par"
+            word = word.replace(".", "").lower()
             sentimientos_p = collection.find({
                 "Sentimiento": "Positivo"
             })
@@ -220,9 +221,12 @@ def get_pair(topics):
             })
 
             for sentimiento in sentimientos_n:
-                tweet_n = sentimiento["texto"]
+                if word in sentimiento["texto"].lower():
+                    tweet_n = sentimiento["texto"]
+
             for sentimiento in sentimientos_p:
-                tweet_p = sentimiento["texto"]
+                if word in sentimiento["texto"].lower():
+                    tweet_n = sentimiento["texto"]
 
             tweets = {
                 "Palabra": word,
