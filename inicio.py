@@ -49,10 +49,25 @@ if __name__ == "__main__":
     load_dotenv()
 
     # asyncio.run(main())
-    usecase_extraction.load_info()
-    archivos = [archivo for archivo in os.listdir(os.getenv('CLEAN_FILES')) if archivo.endswith(".txt")]
 
-    usecase_process.get_feeling_textblob(archivos)
-    feelings = usecase_process.get_feeling_nltk(archivos)
+    e_files = [archivo for archivo in os.listdir(os.getenv('FILES_PATH')) if archivo.endswith(".txt")]
+
+    usecase_extraction.clean_file(e_files)
+    c_files = [archivo for archivo in os.listdir(os.getenv('CLEAN_FILES')) if archivo.endswith(".txt")]
+
+    # usecase_extraction.load_info()
+
+    usecase_process.get_feeling_textblob(c_files)
+    #feelings = usecase_process.get_feeling_nltk(c_files)
+    #print(feelings)
+
+    usecase_process.create_cloud_words(c_files)
+
+    topics = usecase_process.get_principal_topics(c_files)
+
+    pares = usecase_process.get_pair(topics)
+    print(pares)
+
+
 
 
