@@ -226,7 +226,7 @@ def get_pair(topics):
 
             for sentimiento in sentimientos_p:
                 if word in sentimiento["texto"].lower():
-                    tweet_n = sentimiento["texto"]
+                    tweet_p = sentimiento["texto"]
 
             tweets = {
                 "Palabra": word,
