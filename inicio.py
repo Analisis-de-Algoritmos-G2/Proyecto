@@ -12,12 +12,14 @@ ssl._create_default_https_context = ssl._create_unverified_context
 async def main():
 
     # Get credentials from environment variables
+    print(os.getenv('TWITTER_USERNAME'))
+
     username = os.getenv('TWITTER_USERNAME')
     password = os.getenv('TWITTER_PASSWORD')
     email = os.getenv('TWITTER_EMAIL')
     email_password = os.getenv('TWITTER_EMAIL_PASSWORD')
 
-    candidates = ['JERobledo', 'GustavoBolivar', 'CarlosFGalan', 'Rodrigo_Lara_', 'Diego_Molano', 'JDOviedoA']
+    candidates = ['Diego_Molano', 'JDOviedoA', 'ElGeneralVargas', 'Rodrigo_Lara_']
 
     # Delete existing database
     if os.path.exists("accounts.db"):
@@ -48,18 +50,18 @@ if __name__ == "__main__":
 
     load_dotenv()
 
-    asyncio.run(main())
+    # asyncio.run(main())
 
     e_files = [archivo for archivo in os.listdir(os.getenv('FILES_PATH')) if archivo.endswith(".txt")]
 
-    usecase_extraction.clean_file(e_files)
+    # usecase_extraction.clean_file(e_files)
     c_files = [archivo for archivo in os.listdir(os.getenv('CLEAN_FILES')) if archivo.endswith(".txt")]
 
-    usecase_extraction.load_info()
+    # usecase_extraction.load_info()
 
     usecase_process.get_feeling_textblob(c_files)
     feelings = usecase_process.get_feeling_nltk(c_files)
-    print(feelings)
+    #print(feelings)
 
     usecase_process.create_cloud_words(c_files)
 

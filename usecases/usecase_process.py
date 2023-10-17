@@ -4,13 +4,26 @@ from gensim.models.ldamodel import LdaModel
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 import certifi
-from pymongo import MongoClient
+from pymongo import MongoClient, TEXT
 from pymongo.server_api import ServerApi
 from textblob import TextBlob
 import nltk
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 import os
 
+
+def filtrar_palabras_por_tema(ruta_archivo, palabras_clave):
+    # Contenedor para las líneas filtradas
+    lineas_filtradas = []
+
+    # Abrir el archivo y leer línea por línea
+    with open(ruta_archivo, 'r') as archivo:
+        for linea in archivo:
+            # Verificar si alguna de las palabras clave está en la línea
+            if any(palabra in linea.lower() for palabra in palabras_clave):
+                lineas_filtradas.append(linea.strip())  # Añadir la línea sin espacios adicionales
+
+    return ", ".join(lineas_filtradas)
 
 def get_feeling_nltk(archivos):
     nltk.download('vader_lexicon')
@@ -113,7 +126,7 @@ def get_feeling_textblob(archivos):
 def actualizar_registro_mongodb(tweet_id, sentiment, nombre):
     uri = os.getenv('MONGODB_CLIENT')
 
-    client = MongoClient(uri, server_api=ServerApi('1'), tlsCAFile=certifi.where())
+    client = MongoClient(uri, tlsCAFile=certifi.where())
     database = client.get_database('elecciones')
     collection = database.get_collection(nombre)
 
@@ -136,13 +149,12 @@ def get_stopwords(file):
     return set(palabras)
 
 
-def create_cloud_words(files):
+def create_cloud_words(files, palabras_clave):
 
     stopwords = get_stopwords(os.getenv('UTILS_FILES'))
 
     for file in files:
-        with open(os.getenv('CLEAN_FILES') + file, 'r', encoding='utf-8') as file2:
-            texto = file2.read()
+        texto = filtrar_palabras_por_tema(os.getenv('CLEAN_FILES') + file, palabras_clave)
 
         wordcloud = WordCloud(stopwords=stopwords,
                               background_color='white',
@@ -196,6 +208,27 @@ def get_principal_topics(files):
         matriz.append(results)
 
     return matriz
+
+def get_tweet(collection, text):
+    regex_pattern = "|".join(text)
+    uri = os.getenv('MONGODB_CLIENT')
+
+    client = MongoClient(uri, server_api=ServerApi('1'), tlsCAFile=certifi.where())
+    database = client.get_database('elecciones')
+
+    collectioncandi = database.get_collection(collection)
+
+    collectioncandi.create_index([("texto", TEXT)])
+
+    sentimientos_p = collectioncandi.find({
+        "$text": {"$search": regex_pattern},
+        "Sentimiento": "Positivo"
+    })
+
+    for sentimiento in sentimientos_p:
+        tweet_p = sentimiento["texto"]
+        return tweet_p
+
 
 
 def get_pair(topics):

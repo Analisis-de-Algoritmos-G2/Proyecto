@@ -1,0 +1,9 @@
+matplotlib~=3.7.2
+certifi~=2022.12.7
+nltk~=3.8.1
+wordcloud~=1.9.2
+textblob~=0.17.1
+twscrape~=0.8.0
+python-dotenv~=1.0.0
+gensim~=4.3.2
+pymongo~=4.5.0
