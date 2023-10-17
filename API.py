@@ -593,5 +593,21 @@ def get_positive_tweet():
 
     return tweet
 
+@app.route('/get_negative_tweet', methods=['POST'])
+def get_positive_tweet():
+    candidate_name = request.json.get('candidate_name')
+    topic = request.json.get('topic')
+
+    tweet = ""
+
+    if topic == 'Seguridad':
+        tweet = usecase_process.get_tweetNeg(twitter_candi.get(candidate_name), palabras_clave_seguridad)
+    if topic == 'Movilidad':
+        tweet = usecase_process.get_tweetNeg(twitter_candi.get(candidate_name), palabras_clave_movilidad)
+    if topic == 'Educacion':
+        tweet = usecase_process.get_tweetNeg(twitter_candi.get(candidate_name), palabras_clave_educacion)
+
+    return tweet
+
 if __name__ == '__main__':
     app.run(debug=True)
