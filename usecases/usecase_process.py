@@ -230,6 +230,26 @@ def get_tweet(collection, text):
         return tweet_p
 
 
+def get_tweetNeg(collection, text):
+    regex_pattern = "|".join(text)
+    uri = os.getenv('MONGODB_CLIENT')
+
+    client = MongoClient(uri, server_api=ServerApi('1'), tlsCAFile=certifi.where())
+    database = client.get_database('elecciones')
+
+    collectioncandi = database.get_collection(collection)
+
+    collectioncandi.create_index([("texto", TEXT)])
+
+    sentimientos_n = collectioncandi.find({
+        "$text": {"$search": regex_pattern},
+        "Sentimiento": "Negativo"
+    })
+
+    for sentimiento in sentimientos_n:
+        tweet_n = sentimiento["texto"]
+        return tweet_n
+
 
 def get_pair(topics):
     uri = os.getenv('MONGODB_CLIENT')
@@ -276,3 +296,5 @@ def get_pair(topics):
         final.append(result)
 
     return final
+
+
