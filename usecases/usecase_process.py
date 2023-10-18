@@ -10,7 +10,26 @@ from textblob import TextBlob
 import nltk
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 import os
+from selenium import webdriver
+import time
 
+extraction_candidatos = {
+    "Galan": "utils/files/extraction/CarlosFGalan.txt",
+    "Oviedo": "utils/files/extraction/JDOviedoA.txt",
+    "Lara": "utils/files/extraction/Rodrigo_Lara_.txt",
+    "Robledo": "utils/files/extraction/JERobledo.txt",
+    "Bolivar": "utils/files/extraction/GustavoBolivar.txt",
+    "Molano": "utils/files/extraction/Diego_Molano.txt",
+}
+
+clean_candidatos = {
+    "Galan": "utils/files/clean/CarlosFGalan.txt",
+    "Oviedo": "utils/files/clean/JDOviedoA.txt",
+    "Lara": "utils/files/clean/Rodrigo_Lara_.txt",
+    "Robledo": "utils/files/clean/JERobledo.txt",
+    "Bolivar": "utils/files/clean/GustavoBolivar.txt",
+    "Molano": "uutils/files/clean/Diego_Molano.txt",
+}
 
 def filtrar_palabras_por_tema(ruta_archivo, palabras_clave):
     # Contenedor para las líneas filtradas
@@ -122,7 +141,6 @@ def get_feeling_textblob(archivos):
         #print("\tTweets negativos:", negativos, f"({porcentaje_negativos:.2f}%)")
         #print("\tTweets neutrales:", neutrales, f"({porcentaje_neutrales:.2f}%)")
 
-
 def actualizar_registro_mongodb(tweet_id, sentiment, nombre):
     uri = os.getenv('MONGODB_CLIENT')
 
@@ -138,7 +156,6 @@ def actualizar_registro_mongodb(tweet_id, sentiment, nombre):
 
     # Cerrar la conexión a la base de datos
     client.close()
-
 
 def get_stopwords(file):
     text = ""
@@ -230,49 +247,113 @@ def get_tweet(collection, text):
         return tweet_p
 
 
+def buscar_string(archivo, string_a_buscar):
+    palabras_clave = string_a_buscar.split()
 
-def get_pair(topics):
+    # Abrir el archivo en modo lectura
+    with open(clean_candidatos.get(archivo), 'r', encoding='utf-8') as file:  # Asegúrate de usar la codificación correcta
+        for numero_linea, linea in enumerate(file, 1):
+            # Verificar si todas las palabras clave están en la línea
+            if all(palabra in linea for palabra in palabras_clave):
+                id = linea.split()[0]
+                return buscar_id(extraction_candidatos.get(archivo), id)
+    return "El string no fue encontrado."
+
+def buscar_id(archivo, string_a_buscar):
+    # Convertir el string en una lista de palabras
+    palabras_clave = string_a_buscar.split()
+
+    # Abrir el archivo en modo lectura
+    with open(archivo, 'r', encoding='utf-8') as file:  # Asegúrate de usar la codificación correcta
+        for numero_linea, linea in enumerate(file, 1):
+            # Verificar si todas las palabras clave están en la línea
+            if all(palabra in linea for palabra in palabras_clave):
+                return f"{linea}"
+    return "El string no fue encontrado."
+
+def get_tweetNeg(collection, text):
+    regex_pattern = "|".join(text)
     uri = os.getenv('MONGODB_CLIENT')
 
     client = MongoClient(uri, server_api=ServerApi('1'), tlsCAFile=certifi.where())
     database = client.get_database('elecciones')
-    topics.pop(0)
-    final = []
 
-    for topic in topics:
-        pairs = []
-        collection = database.get_collection(topic[-1])
-        for word in topic:
-            tweet_n = "No hay par"
-            tweet_p = "No hay par"
-            word = word.replace(".", "").lower()
-            sentimientos_p = collection.find({
-                "Sentimiento": "Positivo"
-            })
-            sentimientos_n = collection.find({
-                "Sentimiento": "Negativo"
-            })
+    collectioncandi = database.get_collection(collection)
 
-            for sentimiento in sentimientos_n:
-                if word in sentimiento["texto"].lower():
-                    tweet_n = sentimiento["texto"]
+    collectioncandi.create_index([("texto", TEXT)])
 
-            for sentimiento in sentimientos_p:
-                if word in sentimiento["texto"].lower():
-                    tweet_p = sentimiento["texto"]
+    sentimientos_n = collectioncandi.find({
+        "$text": {"$search": regex_pattern},
+        "Sentimiento": "Negativo"
+    })
 
-            tweets = {
-                "Palabra": word,
-                "Positivo": tweet_p,
-                "Negativo": tweet_n,
-            }
+    for sentimiento in sentimientos_n:
+        tweet_n = sentimiento["texto"]
+        return tweet_n
 
-            pairs.append(tweets)
+def get_2(collection):
+    uri = os.getenv('MONGODB_CLIENT')
+    client = MongoClient(uri, server_api=ServerApi('1'), tlsCAFile=certifi.where())
+    database = client.get_database('elecciones')
 
-        result = {
-            "Nombre": topic[-1],
-            "Pares": pairs,
-        }
-        final.append(result)
+    collectioncandi = database.get_collection(collection)
 
-    return final
+    conteo_negativos = collectioncandi.count_documents({
+        "Sentimiento": "Negativo"
+    })
+    conteo_positivos = collectioncandi.count_documents({
+        "Sentimiento": "Positivo"
+    })
+    conteo_neutrales = collectioncandi.count_documents({
+        "Sentimiento": "Neutral"
+    })
+
+    return {"Positivos": conteo_positivos, "Negativos": conteo_negativos, "Neutrales": conteo_neutrales}
+
+def get_count(collection):
+    uri = os.getenv('MONGODB_CLIENT')
+    client = MongoClient(uri, server_api=ServerApi('1'), tlsCAFile=certifi.where())
+    database = client.get_database('elecciones')
+
+    collectioncandi = database.get_collection(collection)
+
+    conteo_negativos = collectioncandi.count_documents({
+        "Sentimiento": "Negativo"
+    })
+    conteo_positivos = collectioncandi.count_documents({
+        "Sentimiento": "Positivo"
+    })
+    conteo_neutrales = collectioncandi.count_documents({
+        "Sentimiento": "Neutral"
+    })
+
+    response = "Positivos: " + str(conteo_positivos) + "\nNegativos: " + str(conteo_negativos) + "\nNeutrales: " + str(conteo_neutrales)
+    return response
+
+def get_general():
+    # URL de la página que contiene el canvas
+    url = 'https://elpais.com/america-colombia/2023-10-05/galan-lidera-las-encuestas-para-la-alcaldia-de-bogota-sin-una-victoria-asegurada.html'
+
+    # Creamos una nueva instancia de un navegador
+    driver = webdriver.Chrome()
+
+    try:
+        # Ir a la URL
+        driver.get(url)
+
+        # Dar tiempo al navegador para cargar y ejecutar JavaScript
+        time.sleep(5)  # Puedes necesitar ajustar este tiempo
+
+        # Encontrar el elemento canvas por su selector
+        canvas = driver.find_element_by_css_selector('canvas[aria-hidden="true"]')
+
+        # Aquí es donde se pone complicado: los datos dentro del canvas han sido dibujados usando JavaScript,
+        # y no hay una manera directa de extraerlos. En su lugar, puedes pedirle a Selenium que tome una captura de pantalla.
+
+        # Guardar el contenido del canvas como una imagen PNG
+        canvas.screenshot('canvas.png')
+    finally:
+        # Cerrar el navegador
+        driver.quit()
+
+

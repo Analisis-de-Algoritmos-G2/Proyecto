@@ -1,17 +1,17 @@
 from flask import Flask, request, send_file, jsonify
 from dotenv import load_dotenv
 import os
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 from usecases import usecase_process
 
 app = Flask(__name__)
-CORS(app)  # Permitir CORS para tu ruta específica.
+CORS(app, resources={r"/*": {"origins": "http://localhost:4200"}})
 
 load_dotenv()
 
 e_files = [archivo for archivo in os.listdir(os.getenv('FILES_PATH')) if archivo.endswith(".txt")]
 c_files = [archivo for archivo in os.listdir(os.getenv('CLEAN_FILES')) if archivo.endswith(".txt")]
-
+response = ""
 imagenes_candidatos = {
     "Galan": "utils/files/diagrams/CarlosFGalan_wordcloud.png",
     "Oviedo": "utils/files/diagrams/JDOviedoA_wordcloud.png",
@@ -20,6 +20,8 @@ imagenes_candidatos = {
     "Bolivar": "utils/files/diagrams/GustavoBolivar_wordcloud.png",
     "Molano": "utils/files/diagrams/Diego_Molano_wordcloud.png",
 }
+
+
 twitter_candi = {
     "Galan": "CarlosFGalan",
     "Oviedo": "JDOviedoA",
@@ -591,7 +593,71 @@ def get_positive_tweet():
     if topic == 'Educacion':
         tweet = usecase_process.get_tweet(twitter_candi.get(candidate_name), palabras_clave_educacion)
 
-    return tweet
+    if tweet:
+        tweet_completo = usecase_process.buscar_string(candidate_name, tweet)
+        return tweet_completo  # If a tweet is found based on the conditions, return it.
+    else:
+        response = f"El candidato {candidate_name} no tiene tweets positivos acerca de {topic}"
+        return response
+
+@app.route('/get_negative_tweet', methods=['POST'])
+@cross_origin()
+def get_negative_tweet():
+    candidate_name = request.json.get('candidate_name')
+    topic = request.json.get('topic')
+
+    tweet = ""
+
+    if topic == 'Seguridad':
+        tweet = usecase_process.get_tweetNeg(twitter_candi.get(candidate_name), palabras_clave_seguridad)
+    if topic == 'Movilidad':
+        tweet = usecase_process.get_tweetNeg(twitter_candi.get(candidate_name), palabras_clave_movilidad)
+    if topic == 'Educacion':
+        tweet = usecase_process.get_tweetNeg(twitter_candi.get(candidate_name), palabras_clave_educacion)
+
+    if tweet:
+        tweet_completo = usecase_process.buscar_string(candidate_name, tweet)
+        return tweet_completo
+    else:
+        response = f"El candidato {candidate_name} no tiene tweets negativos acerca de {topic}"
+        return response
+
+@app.route('/get_count', methods=['POST'])
+@cross_origin()
+def get_count():
+    candidate_name=request.json.get('candidate_name')
+
+    response = usecase_process.get_count(twitter_candi.get(candidate_name))
+    return response
+
+@app.route('/get_winner', methods=['POST'])
+@cross_origin()
+def get_winner():
+    candidate_name1 = request.json.get('candidate_name1')
+    candidate_name2 = request.json.get('candidate_name2')
+
+    count_1 = usecase_process.get_2(twitter_candi.get(candidate_name1))
+    count_2 = usecase_process.get_2(twitter_candi.get(candidate_name2))
+
+    positivos_1 = (count_1.get("Positivos"))
+    positivos_2 = (count_2.get("Positivos"))
+
+    negativos_1 = (count_1.get("Negativos"))
+    negativos_2 = (count_2.get("Negativos"))
+
+    neutrales_1 = (count_1.get("Neutrales"))
+    neutrales_2 = (count_2.get("Neutrales"))
+
+    if positivos_1 > positivos_2:
+        return candidate_name1
+    elif positivos_1 == positivos_2:
+        if negativos_1 > negativos_2:
+            return candidate_name2
+        else:
+            return candidate_name1
+    else:
+        return candidate_name2
+
 
 if __name__ == '__main__':
     app.run(debug=True)
